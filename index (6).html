@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خزينة العمومية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&family=Tajawal:wght@400;500;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0D1826; --surface:#132136; --surface2:#17263C; --surface3:#1D3049;
+    --line:#26374F; --line-soft:rgba(255,255,255,.05);
+    --gold:#CBA653; --gold-dim:rgba(203,166,83,.14); --gold-soft:#8B7130;
+    --credit:#5FBE8A; --credit-soft:rgba(95,190,138,.13);
+    --debit:#E17777; --debit-soft:rgba(225,119,119,.13);
+    --transfer:#7C9CBF; --transfer-soft:rgba(124,156,191,.15);
+    --text:#EDE8DC; --muted:#8B97AC; --muted2:#5E6B80;
+    --shadow: 0 10px 30px -12px rgba(0,0,0,.55);
+  }
+  html.light{
+    --bg:#F2EEE3; --surface:#FFFFFF; --surface2:#F8F5EC; --surface3:#EFE8D6;
+    --line:#DFD5BC; --line-soft:rgba(0,0,0,.05);
+    --gold:#A9822F; --gold-dim:rgba(169,130,47,.13); --gold-soft:#C9A24B;
+    --credit:#2F9563; --credit-soft:rgba(47,149,99,.12);
+    --debit:#C0453F; --debit-soft:rgba(192,69,63,.11);
+    --transfer:#3E6693; --transfer-soft:rgba(62,102,147,.12);
+    --text:#241F14; --muted:#756A50; --muted2:#A79A79;
+    --shadow: 0 10px 26px -16px rgba(60,45,10,.22);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 480px at 15% -8%, rgba(203,166,83,.08), transparent),
+      radial-gradient(900px 400px at 100% 0%, rgba(95,190,138,.05), transparent),
+      var(--bg);
+    color:var(--text); font-family:'Tajawal',sans-serif;
+    min-height:100vh; padding:26px 16px 60px; transition:background .2s,color .2s;
+  }
+  .wrap{max-width:1220px;margin:0 auto;}
+
+  .ledger-shell{
+    position:relative;
+    background:linear-gradient(160deg,var(--surface2),var(--surface) 70%);
+    border:1px solid var(--line); border-radius:16px;
+    padding:28px 30px 24px 26px; margin-bottom:18px; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .ledger-shell::before{
+    content:""; position:absolute; top:0; bottom:0; right:0; width:14px;
+    background:repeating-linear-gradient(180deg,var(--gold-soft) 0 3px, transparent 3px 16px); opacity:.5;
+  }
+  .head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{
+    width:42px;height:42px;border-radius:10px;flex:none;
+    background:linear-gradient(150deg,var(--gold),#9c7d34);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px -4px rgba(203,166,83,.5);
+  }
+  .brand-mark svg{width:22px;height:22px;}
+  .title-block h1{font-family:'Cairo',sans-serif;font-weight:800;font-size:24px;margin:0 0 3px;letter-spacing:.2px;}
+  .title-block p{margin:0;color:var(--muted);font-size:13px;}
+  .head-right{display:flex;align-items:flex-start;gap:14px;}
+  .theme-toggle{
+    width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface3);
+    color:var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;
+  }
+  .theme-toggle svg{width:18px;height:18px;}
+  .balance-box{text-align:left;}
+  .balance-label{font-size:11.5px;color:var(--muted);margin-bottom:2px;letter-spacing:.3px;}
+  .balance-val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:34px;direction:ltr;text-align:left;line-height:1.1;}
+  .balance-val.neg{color:var(--debit);} .balance-val.pos{color:var(--credit);}
+  .balance-sar{font-size:14px;color:var(--muted);margin-right:4px;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:20px;}
+  .kpi-card{background:var(--surface3);border:1px solid var(--line);border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:11px;}
+  .kpi-icon{width:34px;height:34px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;}
+  .kpi-icon svg{width:17px;height:17px;}
+  .kpi-icon.credit{background:var(--credit-soft);color:var(--credit);}
+  .kpi-icon.debit{background:var(--debit-soft);color:var(--debit);}
+  .kpi-icon.gold{background:var(--gold-dim);color:var(--gold);}
+  .kpi-icon.neutral{background:rgba(120,120,120,.12);color:var(--muted);}
+  .kpi-icon.transfer{background:var(--transfer-soft);color:var(--transfer);}
+  .kpi-text .k{font-size:11px;color:var(--muted);margin-bottom:2px;}
+  .kpi-text .v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;direction:ltr;text-align:right;}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 22px 24px;margin-bottom:18px;box-shadow:var(--shadow);}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .panel h2{font-family:'Cairo',sans-serif;font-weight:700;font-size:15.5px;margin:0;display:flex;align-items:center;gap:8px;color:var(--text);}
+  .panel h2 .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+  .panel-head .actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .seg-toggle{display:flex;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px;}
+  .seg-btn{border:none;background:none;color:var(--muted);font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer;font-family:'Tajawal',sans-serif;font-weight:700;}
+  .seg-btn.active{background:var(--gold-dim);color:var(--gold);}
+
+  .chart-wrap{height:220px;position:relative;}
+  .chart-empty{display:flex;align-items:center;justify-content:center;height:220px;color:var(--muted2);font-size:13px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  input, select, textarea{
+    width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:9px 10px;font-family:'Tajawal',sans-serif;font-size:14px;outline:none;transition:border-color .15s;
+  }
+  input:focus, select:focus, textarea:focus{border-color:var(--gold-soft);}
+  input[type=number]{font-family:'JetBrains Mono',monospace;direction:ltr;text-align:right;}
+  .field{margin-bottom:0;}
+  .row-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px;flex-wrap:wrap;}
+  .type-toggle{display:flex;gap:8px;flex-wrap:wrap;}
+  .type-btn{padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:'Tajawal',sans-serif;font-weight:700;font-size:13px;transition:.15s;display:inline-flex;align-items:center;gap:6px;}
+  .type-btn svg{width:14px;height:14px;}
+  .type-btn.active-collection{background:var(--credit-soft);border-color:var(--credit);color:var(--credit);}
+  .type-btn.active-expense{background:var(--debit-soft);border-color:var(--debit);color:var(--debit);}
+  .type-btn.active-transfer{background:var(--transfer-soft);border-color:var(--transfer);color:var(--transfer);}
+
+  .btn-primary{background:var(--gold);color:#1a1305;border:none;border-radius:9px;padding:10px 20px;font-family:'Cairo',sans-serif;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary svg{width:15px;height:15px;}
+  .btn-ghost{background:var(--surface3);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 16px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .btn-ghost:hover{border-color:var(--gold-soft);}
+  .btn-ghost svg{width:14px;height:14px;}
+  .btn-ghost.small{padding:6px 11px;font-size:12px;}
+  .btn-danger{background:var(--debit-soft);color:var(--debit);border:1px solid var(--debit);border-radius:9px;padding:9px 18px;font-family:'Cairo',sans-serif;font-weight:700;font-size:13px;cursor:pointer;}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:16px;}
+  .toolbar .field{min-width:140px;}
+  .search-field{flex:1.3;min-width:170px;position:relative;}
+  .search-field input{padding-left:32px;}
+  .search-field svg{position:absolute;left:10px;top:34px;width:15px;height:15px;color:var(--muted2);}
+  .clear-link{color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;background:none;border:none;padding-bottom:9px;white-space:nowrap;}
+
+  .table-scroll{overflow-x:auto;max-height:520px;overflow-y:auto;border-radius:10px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:right;color:var(--muted);font-weight:700;font-size:10.8px;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1;cursor:pointer;user-select:none;}
+  thead th:hover{color:var(--gold);}
+  thead th .arrow{font-size:9px;margin-right:3px;opacity:.7;}
+  tbody td{padding:10px 10px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+  tbody tr{transition:background .12s;}
+  tbody tr:hover{background:rgba(120,120,120,.05);}
+  .num{font-family:'JetBrains Mono',monospace;direction:ltr;text-align:right;white-space:nowrap;}
+  .credit-txt{color:var(--credit);} .debit-txt{color:var(--debit);} .transfer-txt{color:var(--transfer);}
+  .type-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;font-size:10.8px;font-weight:700;white-space:nowrap;}
+  .type-badge svg{width:11px;height:11px;}
+  .type-badge.collection{background:var(--credit-soft);color:var(--credit);}
+  .type-badge.expense{background:var(--debit-soft);color:var(--debit);}
+  .type-badge.transfer{background:var(--transfer-soft);color:var(--transfer);}
+  .entity-tag{display:inline-flex;align-items:center;gap:6px;background:var(--surface3);border:1px solid var(--line);padding:4px 10px 4px 8px;border-radius:7px;font-size:11px;color:var(--text);white-space:nowrap;}
+  .entity-dot{width:7px;height:7px;border-radius:50%;flex:none;}
+  .flow-cell{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+  .flow-arrow{color:var(--muted2);font-size:12px;}
+  .stmt{color:var(--text);max-width:230px;line-height:1.4;}
+  .row-btns{display:flex;gap:4px;}
+  .icon-btn{background:none;border:none;color:var(--muted2);cursor:pointer;padding:5px;border-radius:6px;transition:.15s;display:flex;align-items:center;justify-content:center;}
+  .icon-btn svg{width:14px;height:14px;}
+  .icon-btn:hover{color:var(--gold);background:var(--gold-dim);}
+  .icon-btn.danger:hover{color:var(--debit);background:var(--debit-soft);}
+  .empty-state{text-align:center;padding:44px 20px;color:var(--muted);}
+  .empty-state svg{width:34px;height:34px;color:var(--muted2);margin-bottom:10px;}
+  .empty-state .big{font-size:14.5px;margin-bottom:4px;color:var(--text);font-weight:700;}
+  .empty-state .small{font-size:12.5px;}
+  .result-count{font-size:11.5px;color:var(--muted2);margin-bottom:10px;}
+
+  /* accounts */
+  .acct-section-title{font-size:12px;color:var(--muted);font-weight:700;margin:18px 0 10px;display:flex;align-items:center;gap:7px;}
+  .acct-section-title:first-child{margin-top:0;}
+  .acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;}
+  .acct-card{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:15px;border-top:2px solid var(--card-color, var(--gold));}
+  .acct-card .nm{font-weight:700;font-size:13px;margin-bottom:9px;color:var(--text);display:flex;align-items:center;gap:7px;}
+  .acct-card .bal-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+  .acct-card .bal-label{font-size:11px;color:var(--muted);}
+  .acct-card .bal-val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;direction:ltr;}
+  .acct-card .meta{font-size:11px;color:var(--muted2);margin-bottom:12px;}
+  .acct-card .acct-actions{display:flex;gap:6px;}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(6,10,17,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;animation:fadeIn .15s ease;}
+  html.light .modal-overlay{background:rgba(40,32,15,.35);}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .modal-box{background:var(--surface2);border:1px solid var(--line);border-radius:16px;padding:24px;width:100%;max-width:540px;box-shadow:0 24px 60px -12px rgba(0,0,0,.6);animation:slideUp .18s ease;max-height:88vh;overflow-y:auto;}
+  @keyframes slideUp{from{transform:translateY(12px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-box.small{max-width:380px;}
+  .modal-box.report{max-width:640px;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .modal-head h3{font-family:'Cairo',sans-serif;font-size:16px;margin:0;}
+  .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:6px;}
+  .modal-close:hover{color:var(--text);background:var(--surface3);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .confirm-text{color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:4px;}
+  .color-swatches{display:flex;gap:8px;flex-wrap:wrap;}
+  .swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
+  .swatch.selected{border-color:var(--text);}
+
+  /* report */
+  .report-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+  .report-meta .nm{font-family:'Cairo',sans-serif;font-weight:800;font-size:16px;}
+  .report-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+  .report-stat{background:var(--surface3);border:1px solid var(--line);border-radius:9px;padding:10px;text-align:center;}
+  .report-stat .k{font-size:10.5px;color:var(--muted);margin-bottom:3px;}
+  .report-stat .v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14.5px;direction:ltr;}
+  .report-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .report-table th{text-align:right;color:var(--muted);font-size:10.5px;padding:6px 8px;border-bottom:1px solid var(--line);}
+  .report-table td{padding:7px 8px;border-bottom:1px solid var(--line-soft);}
+
+  ::placeholder{color:var(--muted2);}
+  select option{background:var(--surface2);color:var(--text);}
+  .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;}
+
+  #print-area{display:none;}
+
+  /* nav tabs */
+  .nav-tabs{
+    display:flex; gap:4px; background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:5px; margin-bottom:18px; box-shadow:var(--shadow); overflow-x:auto;
+  }
+  .nav-tab{
+    flex:1; min-width:110px; display:flex; align-items:center; justify-content:center; gap:7px;
+    padding:10px 14px; border-radius:10px; border:none; background:none; color:var(--muted);
+    font-family:'Cairo',sans-serif; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; transition:.15s;
+  }
+  .nav-tab svg{width:15px;height:15px;}
+  .nav-tab.active{background:var(--gold-dim); color:var(--gold);}
+  .nav-tab:not(.active):hover{background:var(--surface3); color:var(--text);}
+
+  /* toast */
+  #toast-stack{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  .toast{
+    background:var(--surface3);border:1px solid var(--line);color:var(--text);padding:11px 20px;border-radius:10px;
+    font-size:13px;font-weight:600;box-shadow:0 12px 30px -8px rgba(0,0,0,.5);animation:toastIn .2s ease;display:flex;align-items:center;gap:8px;
+  }
+  .toast.error{border-color:var(--debit);color:var(--debit);}
+  .toast.success{border-color:var(--credit);color:var(--credit);}
+  @keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+  /* settings */
+  .settings-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line-soft);gap:16px;flex-wrap:wrap;}
+  .settings-row:last-child{border-bottom:none;}
+  .settings-row .lbl{font-weight:700;font-size:13.5px;}
+  .settings-row .desc{color:var(--muted);font-size:12px;margin-top:2px;}
+  .settings-row .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .settings-row .ctl input{min-width:220px;}
+
+  @media(max-width:640px){
+    .balance-box{text-align:right;width:100%;}
+    .head-row{flex-direction:column;}
+    .table-scroll{max-height:none;}
+    thead{display:none;}
+    table, tbody, tr, td{display:block;width:100%;}
+    tbody tr{border-bottom:1px solid var(--line);padding:10px 4px;}
+    tbody td{border:none;padding:3px 2px;display:flex;justify-content:space-between;gap:10px;}
+    tbody td::before{content:attr(data-label);color:var(--muted);font-size:11px;}
+    .stmt{max-width:none;text-align:left;}
+    .report-stats{grid-template-columns:1fr;}
+  }
+
+  @media print{
+    body *{visibility:hidden;}
+    #print-area, #print-area *{visibility:visible;}
+    #print-area{display:block;position:absolute;top:0;left:0;width:100%;padding:20px;color:#000;background:#fff;}
+    #print-area .report-table th, #print-area .report-table td{border-color:#ccc;color:#000;}
+    #print-area .report-stat{border-color:#ccc;background:#f5f5f5;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">جارِ تحميل البيانات...</div></div>
+<div id="print-area"></div>
+<div id="toast-stack"></div>
+
+<script>
+// محول تخزين محلي (localStorage) بنفس واجهة window.storage — يعمل هذا التطبيق بشكل مستقل بالكامل
+// على أي استضافة (GitHub Pages، سيرفر عادي...) بدون الحاجة لمنصة Claude.
+window.storage = {
+  async get(key){
+    try{
+      const v = localStorage.getItem('khz__' + key);
+      return v === null ? null : { key, value: v };
+    }catch(e){ return null; }
+  },
+  async set(key, value){
+    try{
+      localStorage.setItem('khz__' + key, value);
+      return { key, value };
+    }catch(e){ return null; }
+  },
+  async delete(key){
+    try{ localStorage.removeItem('khz__' + key); return { key, deleted:true }; }catch(e){ return null; }
+  },
+  async list(prefix){
+    try{
+      const keys = [];
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith('khz__')){
+          const clean = k.slice(5);
+          if(!prefix || clean.startsWith(prefix)) keys.push(clean);
+        }
+      }
+      return { keys };
+    }catch(e){ return null; }
+  }
+};
+</script>
+<script>
+const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+const PALETTE = ["#CBA653","#7C9CBF","#8FAE9B","#B98B73","#A98FC2","#8FC2BC","#C97C7C","#7CC9A6","#C9A67C","#8F9FC2"];
+const STORE_ACCOUNTS = "khazina_v2_accounts";
+const STORE_ENTRIES = "khazina_v2_entries";
+const STORE_THEME = "khazina_theme";
+const LEGACY_ENTRIES = "khazina_entries";
+const STORE_COUNTS = "khazina_v2_counts";
+const STORE_LOG = "khazina_v2_log";
+const STORE_SETTINGS = "khazina_v2_settings";
+const DENOMINATIONS = [500,200,100,50,20,10,5,2,1,0.5,0.25];
+
+const ICONS = {
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>`,
+  wallet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1"/><path d="M18 12a2 2 0 0 0 0 4h3v-4Z"/></svg>`,
+  up:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M7 7h10v10"/></svg>`,
+  down:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10M17 7v10H7"/></svg>`,
+  list:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`,
+  download:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>`,
+  book:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  print:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>`,
+  transfer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-4 4 4 4"/><path d="M3 14h13a5 5 0 0 0 5-5"/><path d="M17 14a5 5 0 0 0-5-5H3"/><path d="M17 6l4-4-4-4" transform="translate(0,4)"/></svg>`,
+  safe:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><circle cx="12" cy="12.5" r="3.4"/><path d="M12 9.1v.1M8 4V2m8 2V2"/></svg>`,
+  tag:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l8.58-8.58a1 1 0 0 0 0-1.42L12 2Z"/><circle cx="7" cy="7" r="1"/></svg>`,
+  sun:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2 12h2.2M19.8 12H22M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>`,
+  moon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>`,
+  file:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>`,
+  coins:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4M16.71 13.88l.7.71-.71.7"/></svg>`,
+  activity:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
+  clock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+  settings:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+  upload:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>`,
+};
+
+let accounts = [];
+let entries = [];
+let theme = 'dark';
+
+let filterKind = "";
+let filterAccount = "";
+let searchQuery = "";
+let sortKey = "date";
+let sortDir = "desc";
+let chartRange = "all";
+
+let entryModalOpen = false;
+let entryKind = "collection";
+let editingEntryId = null;
+
+let acctModalOpen = false;
+let acctModalType = "source";
+let editingAcctId = null;
+let selectedColor = PALETTE[0];
+
+let deletePendingEntryId = null;
+let deletePendingAcctId = null;
+let reportAcctId = null;
+
+let counts = [];
+let activityLog = [];
+let countModalAcctId = null;
+let deletePendingCountId = null;
+let logExpanded = false;
+
+let currentTab = 'dashboard';
+let settings = { orgName: 'خزينة العمومية' };
+
+function fmt(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-US', {minimumFractionDigits: n % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2});
+}
+function uid(list){ return list.length ? Math.max(...list.map(x=>x.id)) + 1 : 1; }
+
+async function loadAll(){
+  try{
+    const [aRes, eRes, tRes, cRes, lRes, sRes] = await Promise.all([
+      window.storage.get(STORE_ACCOUNTS).catch(()=>null),
+      window.storage.get(STORE_ENTRIES).catch(()=>null),
+      window.storage.get(STORE_THEME).catch(()=>null),
+      window.storage.get(STORE_COUNTS).catch(()=>null),
+      window.storage.get(STORE_LOG).catch(()=>null),
+      window.storage.get(STORE_SETTINGS).catch(()=>null),
+    ]);
+    accounts = aRes ? JSON.parse(aRes.value) : [];
+    entries = eRes ? JSON.parse(eRes.value) : [];
+    theme = tRes ? tRes.value : 'dark';
+    counts = cRes ? JSON.parse(cRes.value) : [];
+    activityLog = lRes ? JSON.parse(lRes.value) : [];
+    settings = sRes ? JSON.parse(sRes.value) : { orgName: 'خزينة العمومية' };
+  }catch(e){ accounts=[]; entries=[]; counts=[]; activityLog=[]; }
+
+  if(accounts.length===0 && entries.length===0){
+    let legacy = null;
+    try{ const r = await window.storage.get(LEGACY_ENTRIES); legacy = r ? JSON.parse(r.value) : null; }catch(e){ legacy=null; }
+    if(legacy && legacy.length){ migrateLegacy(legacy); }
+    else{ seedDefaults(); }
+    await saveAccounts(); await saveEntries();
+  }
+
+  applyTheme();
+  render();
+}
+
+function seedDefaults(){
+  const sourceNames = [
+    "مؤسسة اختصاص القهوة لتقديم المشروبات","مؤسسة محمد حامد مقهي 24","مؤسسة محمد حامد مسكوب",
+    "مؤسسة محمد حامد رايس","شركة مستقبل الاقتصاد","أبو حامد"
+  ];
+  accounts = sourceNames.map((name,i)=>({id:i+1, name, type:'source', color:PALETTE[i%PALETTE.length], createdAt:Date.now()}));
+  accounts.push({id:accounts.length+1, name:"مصروفات عمومية", type:'expense', color:'#E17777', createdAt:Date.now()});
+  entries = [];
+}
+
+function migrateLegacy(legacy){
+  const nameToAcct = {};
+  accounts = [];
+  let colorIdx = 0;
+  const expenseAcct = {id:0, name:"مصروفات عمومية (منقولة)", type:'expense', color:'#E17777', createdAt:Date.now()};
+  legacy.forEach(le=>{
+    if(le.entity && !nameToAcct[le.entity]){
+      const acc = {id: Object.keys(nameToAcct).length+1, name: le.entity, type:'source', color: PALETTE[colorIdx % PALETTE.length], createdAt: Date.now()};
+      colorIdx++;
+      nameToAcct[le.entity] = acc;
+      accounts.push(acc);
+    }
+  });
+  expenseAcct.id = accounts.length+1;
+  accounts.push(expenseAcct);
+
+  entries = [];
+  let eid = 1;
+  legacy.forEach(le=>{
+    if(le.credit>0 && nameToAcct[le.entity]){
+      entries.push({id:eid++, kind:'collection', accountId:nameToAcct[le.entity].id, amount:Number(le.credit), statement:le.statement||'', day:le.day, month:le.month, year:le.year, createdAt:le.createdAt||Date.now()});
+    }
+    if(le.debit>0){
+      const stmt = le.entity ? `[${le.entity}] ${le.statement||''}` : (le.statement||'');
+      entries.push({id:eid++, kind:'expense', accountId:expenseAcct.id, amount:Number(le.debit), statement:stmt, day:le.day, month:le.month, year:le.year, createdAt:le.createdAt||Date.now()});
+    }
+  });
+}
+
+async function saveAccounts(){ try{ await window.storage.set(STORE_ACCOUNTS, JSON.stringify(accounts)); }catch(e){console.error(e);} }
+async function saveEntries(){ try{ await window.storage.set(STORE_ENTRIES, JSON.stringify(entries)); }catch(e){console.error(e);} }
+async function saveTheme(){ try{ await window.storage.set(STORE_THEME, theme); }catch(e){console.error(e);} }
+async function saveCounts(){ try{ await window.storage.set(STORE_COUNTS, JSON.stringify(counts)); }catch(e){console.error(e);} }
+async function saveLog(){ try{ await window.storage.set(STORE_LOG, JSON.stringify(activityLog)); }catch(e){console.error(e);} }
+async function saveSettings(){ try{ await window.storage.set(STORE_SETTINGS, JSON.stringify(settings)); }catch(e){console.error(e);} }
+
+function showToast(msg, type){
+  const stack = document.getElementById('toast-stack');
+  if(!stack) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (type?(' '+type):'');
+  el.innerHTML = (type==='success'?ICONS.check:type==='error'?ICONS.trash:'') + `<span>${msg}</span>`;
+  stack.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .25s'; setTimeout(()=>el.remove(), 250); }, 2600);
+}
+
+function exportBackup(){
+  const backup = { accounts, entries, counts, activityLog, settings, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `khazina_backup_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('تم تنزيل النسخة الاحتياطية', 'success');
+}
+
+function importBackupFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.accounts || !data.entries){ showToast('ملف النسخة الاحتياطية غير صالح', 'error'); return; }
+      if(!confirm('سيتم استبدال كل البيانات الحالية بالنسخة الاحتياطية المستوردة. متابعة؟')) return;
+      accounts = data.accounts||[]; entries = data.entries||[]; counts = data.counts||[]; activityLog = data.activityLog||[]; settings = data.settings||settings;
+      saveAccounts(); saveEntries(); saveCounts(); saveLog(); saveSettings();
+      logActivity('add', 'تم استيراد نسخة احتياطية كاملة للبيانات');
+      showToast('تم استيراد النسخة الاحتياطية بنجاح', 'success');
+      render();
+    }catch(err){ showToast('تعذّرت قراءة الملف', 'error'); }
+  };
+  reader.readAsText(file);
+}
+
+function logActivity(action, details){
+  activityLog.unshift({id: uid(activityLog), action, details, ts: Date.now()});
+  if(activityLog.length > 300) activityLog = activityLog.slice(0,300);
+  saveLog();
+}
+
+function applyTheme(){
+  document.documentElement.classList.toggle('light', theme==='light');
+}
+function toggleTheme(){
+  theme = theme==='dark' ? 'light' : 'dark';
+  applyTheme(); saveTheme(); render();
+}
+
+function getAccount(id){ return accounts.find(a=>a.id===id); }
+function sourceAccounts(){ return accounts.filter(a=>a.type==='source'); }
+function expenseAccounts(){ return accounts.filter(a=>a.type==='expense'); }
+
+function dateValue(e){
+  const mi = MONTHS.indexOf(e.month);
+  return new Date(Number(e.year)||2026, mi>=0?mi:0, Number(e.day)||1).getTime() + (e.id||0)*0.001;
+}
+
+function overallTotals(){
+  let collected=0, spent=0;
+  entries.forEach(e=>{
+    if(e.kind==='collection') collected += e.amount||0;
+    if(e.kind==='expense') spent += e.amount||0;
+  });
+  return {collected, spent, net: collected-spent};
+}
+
+function overallChronological(){
+  let list = entries.filter(e=>e.kind==='collection'||e.kind==='expense').sort((a,b)=>dateValue(a)-dateValue(b));
+  let bal = 0;
+  return list.map(e=>{
+    bal += e.kind==='collection' ? (e.amount||0) : -(e.amount||0);
+    return {...e, balance:bal};
+  });
+}
+
+function accountBalance(accountId){
+  let bal = 0, count=0;
+  entries.forEach(e=>{
+    if(e.kind==='collection' && e.accountId===accountId){ bal += e.amount||0; count++; }
+    if(e.kind==='expense' && e.accountId===accountId){ bal += e.amount||0; count++; }
+    if(e.kind==='transfer' && e.fromAccountId===accountId){ bal -= e.amount||0; count++; }
+    if(e.kind==='transfer' && e.toAccountId===accountId){ bal += e.amount||0; count++; }
+  });
+  return {balance:bal, count};
+}
+
+function accountLedger(accountId){
+  let list = entries.filter(e=>{
+    if(e.kind==='transfer') return e.fromAccountId===accountId || e.toAccountId===accountId;
+    return e.accountId===accountId;
+  }).sort((a,b)=>dateValue(a)-dateValue(b));
+  let running = 0;
+  return list.map(e=>{
+    let signed = 0;
+    if(e.kind==='collection') signed = e.amount;
+    else if(e.kind==='expense') signed = e.amount;
+    else if(e.kind==='transfer' && e.fromAccountId===accountId) signed = -e.amount;
+    else if(e.kind==='transfer' && e.toAccountId===accountId) signed = e.amount;
+    running += signed;
+    return {...e, signed, running};
+  });
+}
+
+function entryLabel(e){
+  if(e.kind==='collection') return {text:'تحصيل', badge:'collection', icon:ICONS.up};
+  if(e.kind==='expense') return {text:'صرف', badge:'expense', icon:ICONS.down};
+  return {text:'تحويل', badge:'transfer', icon:ICONS.transfer};
+}
+
+function getDisplayRows(){
+  let list = [...entries];
+  list = list.filter(e=>{
+    if(filterKind && e.kind !== filterKind) return false;
+    if(filterAccount){
+      const matches = e.kind==='transfer' ? (e.fromAccountId===Number(filterAccount) || e.toAccountId===Number(filterAccount)) : (e.accountId===Number(filterAccount));
+      if(!matches) return false;
+    }
+    if(searchQuery && !(e.statement||'').toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+  const dir = sortDir==='asc' ? 1 : -1;
+  list.sort((a,b)=>{
+    let av, bv;
+    switch(sortKey){
+      case 'amount': av=a.amount||0; bv=b.amount||0; break;
+      case 'kind': av=a.kind; bv=b.kind; return dir*av.localeCompare(bv);
+      default: av=dateValue(a); bv=dateValue(b);
+    }
+    return dir*(av-bv);
+  });
+  return list;
+}
+
+function exportCSV(){
+  const rows = getDisplayRows();
+  if(!rows.length) return;
+  const header = ['#','النوع','التاريخ','الحساب / من','إلى (تحويل)','البيان','المبلغ'];
+  const lines = [header.join(',')];
+  rows.forEach(e=>{
+    const lbl = entryLabel(e).text;
+    const acctName = e.kind==='transfer' ? (getAccount(e.fromAccountId)?.name||'') : (getAccount(e.accountId)?.name||'');
+    const toName = e.kind==='transfer' ? (getAccount(e.toAccountId)?.name||'') : '';
+    const row = [e.id, lbl, `${e.day} ${e.month} ${e.year}`, `"${acctName.replace(/"/g,'""')}"`, `"${toName.replace(/"/g,'""')}"`, `"${(e.statement||'').replace(/"/g,'""')}"`, e.amount||0];
+    lines.push(row.join(','));
+  });
+  const csv = "\uFEFF" + lines.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='khazina_export.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function sortArrow(key){ if(sortKey!==key) return ''; return `<span class="arrow">${sortDir==='asc'?'▲':'▼'}</span>`; }
+
+/* ---- entry CRUD ---- */
+function openAddEntry(kind){ editingEntryId=null; entryKind=kind||'collection'; entryModalOpen=true; render(); }
+function openEditEntry(id){
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  editingEntryId=id; entryKind=e.kind; entryModalOpen=true; render();
+}
+function closeEntryModal(){ entryModalOpen=false; editingEntryId=null; render(); }
+
+function upsertEntry(data){
+  let payload;
+  if(entryKind==='transfer'){
+    if(data.fromAccountId===data.toAccountId){ showToast('اختر حسابين مختلفين للتحويل', 'error'); return; }
+    payload = {kind:'transfer', fromAccountId:Number(data.fromAccountId), toAccountId:Number(data.toAccountId), amount:Number(data.amount), statement:data.statement, day:data.day, month:data.month, year:data.year};
+  } else {
+    payload = {kind:entryKind, accountId:Number(data.accountId), amount:Number(data.amount), statement:data.statement, day:data.day, month:data.month, year:data.year};
+  }
+  const kindLabel = entryKind==='collection'?'تحصيل':entryKind==='expense'?'صرف':'تحويل';
+  if(editingEntryId){
+    const idx = entries.findIndex(e=>e.id===editingEntryId);
+    if(idx>-1) entries[idx] = {...entries[idx], ...payload};
+    logActivity('edit', `تعديل حركة ${kindLabel} بمبلغ ${fmt(payload.amount)} ر.س — ${payload.statement||''}`);
+  } else {
+    entries.push({id:uid(entries), ...payload, createdAt:Date.now()});
+    logActivity('add', `إضافة حركة ${kindLabel} بمبلغ ${fmt(payload.amount)} ر.س — ${payload.statement||''}`);
+  }
+  saveEntries(); closeEntryModal(); render();
+}
+function deleteEntry(id){
+  const e = entries.find(x=>x.id===id);
+  if(e){ const kindLabel = e.kind==='collection'?'تحصيل':e.kind==='expense'?'صرف':'تحويل'; logActivity('delete', `حذف حركة ${kindLabel} بمبلغ ${fmt(e.amount)} ر.س — ${e.statement||''}`); }
+  entries = entries.filter(e=>e.id!==id); saveEntries(); deletePendingEntryId=null; render();
+}
+
+/* ---- account CRUD ---- */
+function openAddAccount(type){ editingAcctId=null; acctModalType=type; selectedColor=PALETTE[accounts.length % PALETTE.length]; acctModalOpen=true; render(); }
+function openEditAccount(id){
+  const a = getAccount(id); if(!a) return;
+  editingAcctId=id; acctModalType=a.type; selectedColor=a.color; acctModalOpen=true; render();
+}
+function closeAcctModal(){ acctModalOpen=false; editingAcctId=null; render(); }
+function upsertAccount(name){
+  name = (name||'').trim();
+  if(!name) return;
+  const typeLabel = acctModalType==='source' ? 'خزينة' : 'حساب صرف';
+  if(editingAcctId){
+    const idx = accounts.findIndex(a=>a.id===editingAcctId);
+    if(idx>-1) accounts[idx] = {...accounts[idx], name, color:selectedColor};
+    logActivity('edit', `تعديل ${typeLabel}: ${name}`);
+  } else {
+    accounts.push({id:uid(accounts), name, type:acctModalType, color:selectedColor, createdAt:Date.now()});
+    logActivity('add', `إضافة ${typeLabel} جديدة: ${name}`);
+  }
+  saveAccounts(); closeAcctModal(); render();
+}
+function deleteAccount(id){
+  const acc = getAccount(id);
+  entries = entries.filter(e=> e.kind==='transfer' ? (e.fromAccountId!==id && e.toAccountId!==id) : e.accountId!==id);
+  counts = counts.filter(c=>c.accountId!==id);
+  accounts = accounts.filter(a=>a.id!==id);
+  if(acc){ const typeLabel = acc.type==='source'?'خزينة':'حساب صرف'; logActivity('delete', `حذف ${typeLabel}: ${acc.name} (وكل الحركات المرتبطة)`); }
+  saveAccounts(); saveEntries(); saveCounts(); deletePendingAcctId=null; render();
+}
+
+/* ---- cash count (جرد) ---- */
+function openCountModal(accountId){ countModalAcctId=accountId; render(); }
+function closeCountModal(){ countModalAcctId=null; render(); }
+function accountCounts(accountId){ return counts.filter(c=>c.accountId===accountId).sort((a,b)=>b.createdAt-a.createdAt); }
+function saveCount(accountId, denomQty, note, dateInfo){
+  const total = DENOMINATIONS.reduce((s,d)=> s + (Number(denomQty[d])||0)*d, 0);
+  counts.push({id:uid(counts), accountId, denomQty, total, note, day:dateInfo.day, month:dateInfo.month, year:dateInfo.year, createdAt:Date.now()});
+  saveCounts();
+  const acc = getAccount(accountId);
+  logActivity('add', `تسجيل جرد نقدي لـ ${acc?acc.name:''} — الإجمالي ${fmt(total)} ر.س`);
+  render();
+}
+function deleteCount(id){
+  const c = counts.find(x=>x.id===id);
+  if(c){ const acc = getAccount(c.accountId); logActivity('delete', `حذف جرد نقدي لـ ${acc?acc.name:''} — الإجمالي ${fmt(c.total)} ر.س`); }
+  counts = counts.filter(x=>x.id!==id); saveCounts(); deletePendingCountId=null; render();
+}
+
+/* ---- report / print ---- */
+function openReport(accountId){ reportAcctId=accountId; render(); }
+function closeReport(){ reportAcctId=null; render(); }
+function printReport(){
+  const acc = getAccount(reportAcctId); if(!acc) return;
+  const ledger = accountLedger(reportAcctId);
+  const isSource = acc.type==='source';
+  const totalIn = ledger.filter(e=>e.signed>0).reduce((s,e)=>s+e.signed,0);
+  const totalOut = ledger.filter(e=>e.signed<0).reduce((s,e)=>s+Math.abs(e.signed),0);
+  const printArea = document.getElementById('print-area');
+  printArea.innerHTML = `
+    <div style="font-family:'Tajawal',sans-serif;direction:rtl;">
+      <div style="border-bottom:2px solid #CBA653;padding-bottom:10px;margin-bottom:14px;">
+        <div style="font-family:'Cairo',sans-serif;font-weight:800;font-size:14px;color:#555;">${settings.orgName||''}</div>
+        <h2 style="font-family:'Cairo',sans-serif;margin:4px 0 0;">تقرير ${isSource?'خزينة':'حساب صرف'}: ${acc.name}</h2>
+      </div>
+      <p style="color:#555;font-size:12px;">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-SA')}</p>
+      <div class="report-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0;">
+        <div class="report-stat"><div class="k">إجمالي الوارد</div><div class="v">${fmt(totalIn)}</div></div>
+        <div class="report-stat"><div class="k">إجمالي المنصرف/الصادر</div><div class="v">${fmt(totalOut)}</div></div>
+        <div class="report-stat"><div class="k">الرصيد الصافي</div><div class="v">${fmt(totalIn-totalOut)}</div></div>
+      </div>
+      <table class="report-table" style="width:100%;border-collapse:collapse;">
+        <thead><tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>المبلغ</th><th>الرصيد التراكمي</th></tr></thead>
+        <tbody>
+          ${ledger.map(e=>`<tr>
+            <td>${e.day} ${e.month} ${e.year}</td>
+            <td>${entryLabel(e).text}${e.kind==='transfer' ? (e.fromAccountId===reportAcctId?' (صادر)':' (وارد)') : ''}</td>
+            <td>${e.statement||''}</td>
+            <td style="direction:ltr;text-align:right;">${e.signed>=0?'+':''}${fmt(e.signed)}</td>
+            <td style="direction:ltr;text-align:right;">${fmt(e.running)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  window.print();
+}
+
+/* ---- render ---- */
+function render(){
+  const app = document.getElementById('app');
+  const t = overallTotals();
+  const rows = getDisplayRows();
+  const chronological = overallChronological();
+  const hasFilters = filterKind || filterAccount || searchQuery;
+
+  app.innerHTML = `
+    <div class="ledger-shell">
+      <div class="head-row">
+        <div class="brand">
+          <div class="brand-mark">${ICONS.book.replace('currentColor','#1a1305')}</div>
+          <div class="title-block">
+            <h1>خزينة العمومية</h1>
+            <p>تحصيل من الخزائن الفرعية وصرف المصروفات العمومية</p>
+          </div>
+        </div>
+        <div class="head-right">
+          <button class="theme-toggle" id="themeToggle" title="تبديل المظهر">${theme==='dark'?ICONS.sun:ICONS.moon}</button>
+          <div class="balance-box">
+            <div class="balance-label">رصيد العمومية</div>
+            <div class="balance-val ${t.net<0?'neg':'pos'}">${t.net<0?'-':''}${fmt(Math.abs(t.net))}<span class="balance-sar">ر.س</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-icon credit">${ICONS.up}</div><div class="kpi-text"><div class="k">إجمالي التحصيل</div><div class="v">${fmt(t.collected)}</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon debit">${ICONS.down}</div><div class="kpi-text"><div class="k">إجمالي الصرف</div><div class="v">${fmt(t.spent)}</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon gold">${ICONS.wallet}</div><div class="kpi-text"><div class="k">الصافي</div><div class="v">${fmt(t.net)}</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon neutral">${ICONS.safe}</div><div class="kpi-text"><div class="k">خزائن مصدر</div><div class="v">${sourceAccounts().length}</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon neutral">${ICONS.tag}</div><div class="kpi-text"><div class="k">حسابات صرف</div><div class="v">${expenseAccounts().length}</div></div></div>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab ${currentTab==='dashboard'?'active':''}" data-tab="dashboard">${ICONS.grid}لوحة التحكم</button>
+      <button class="nav-tab ${currentTab==='accounts'?'active':''}" data-tab="accounts">${ICONS.safe}الحسابات والخزائن</button>
+      <button class="nav-tab ${currentTab==='ledger'?'active':''}" data-tab="ledger">${ICONS.list}سجل الحركات</button>
+      <button class="nav-tab ${currentTab==='log'?'active':''}" data-tab="log">${ICONS.activity}سجل العمليات</button>
+      <button class="nav-tab ${currentTab==='settings'?'active':''}" data-tab="settings">${ICONS.settings}الإعدادات</button>
+    </div>
+
+    <div class="panel" style="${currentTab!=='dashboard'?'display:none;':''}">
+      <div class="panel-head">
+        <h2><span class="dot"></span>تطور رصيد العمومية</h2>
+        <div class="seg-toggle">
+          <button class="seg-btn ${chartRange==='last10'?'active':''}" id="chartLast10">آخر 10</button>
+          <button class="seg-btn ${chartRange==='all'?'active':''}" id="chartAll">الكل</button>
+        </div>
+      </div>
+      <div class="chart-wrap">${chronological.length?'<canvas id="balanceChart"></canvas>':'<div class="chart-empty">لا توجد بيانات كافية لعرض الرسم البياني</div>'}</div>
+    </div>
+
+    <div class="panel" style="${currentTab!=='dashboard'?'display:none;':''}">
+      <h2 style="margin-bottom:16px;"><span class="dot"></span>أهم الحسابات نشاطًا</h2>
+      <div class="acct-grid">
+        ${[...accounts].map(a=>({a, b:accountBalance(a.id)})).sort((x,y)=>y.b.count-x.b.count).slice(0,4).map(({a,b})=>`
+          <div class="acct-card" style="--card-color:${a.color}">
+            <div class="nm"><span class="entity-dot" style="background:${a.color}"></span>${a.name}</div>
+            <div class="bal-row"><span class="bal-label">${a.type==='source'?'الرصيد المحصّل':'إجمالي المصروف'}</span><span class="bal-val ${a.type==='source'?(b.balance>=0?'credit-txt':'debit-txt'):'debit-txt'}">${fmt(b.balance)}</span></div>
+            <div class="meta">${b.count} حركة</div>
+          </div>`).join('') || `<div class="empty-state small" style="padding:20px;">أضف خزائن وحسابات من تبويب "الحسابات والخزائن"</div>`}
+      </div>
+    </div>
+
+    <div class="panel" style="${currentTab!=='accounts'?'display:none;':''}">
+      <div class="panel-head">
+        <h2><span class="dot"></span>الحسابات والخزائن</h2>
+        <div class="actions">
+          <button class="btn-ghost small" id="addSourceBtn">${ICONS.plus}خزينة جديدة</button>
+          <button class="btn-ghost small" id="addExpenseBtn">${ICONS.plus}حساب صرف جديد</button>
+        </div>
+      </div>
+
+      <div class="acct-section-title">${ICONS.safe} الخزائن المصدر (التحصيل)</div>
+      ${sourceAccounts().length===0 ? `<div class="empty-state small" style="padding:20px;">لا توجد خزائن مصدر بعد</div>` : `
+      <div class="acct-grid" style="margin-bottom:6px;">
+        ${sourceAccounts().map(a=>{
+          const b = accountBalance(a.id);
+          const lastCounts = accountCounts(a.id);
+          const last = lastCounts[0];
+          return `
+          <div class="acct-card" style="--card-color:${a.color}">
+            <div class="nm"><span class="entity-dot" style="background:${a.color}"></span>${a.name}</div>
+            <div class="bal-row"><span class="bal-label">الرصيد المحصّل</span><span class="bal-val ${b.balance>=0?'credit-txt':'debit-txt'}">${fmt(b.balance)}</span></div>
+            <div class="meta">${b.count} حركة${last ? ` · آخر جرد: ${fmt(last.total)} ر.س (${last.day} ${last.month})` : ' · لا يوجد جرد بعد'}</div>
+            <div class="acct-actions">
+              <button class="btn-ghost small" data-count="${a.id}">${ICONS.coins}جرد</button>
+              <button class="btn-ghost small" data-report="${a.id}">${ICONS.file}تقرير</button>
+              <button class="icon-btn" data-edit-acct="${a.id}">${ICONS.edit}</button>
+              <button class="icon-btn danger" data-del-acct="${a.id}">${ICONS.trash}</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+
+      <div class="acct-section-title">${ICONS.tag} حسابات الصرف (المصروفات)</div>
+      ${expenseAccounts().length===0 ? `<div class="empty-state small" style="padding:20px;">لا توجد حسابات صرف بعد</div>` : `
+      <div class="acct-grid">
+        ${expenseAccounts().map(a=>{
+          const b = accountBalance(a.id);
+          return `
+          <div class="acct-card" style="--card-color:${a.color}">
+            <div class="nm"><span class="entity-dot" style="background:${a.color}"></span>${a.name}</div>
+            <div class="bal-row"><span class="bal-label">إجمالي المصروف</span><span class="bal-val debit-txt">${fmt(b.balance)}</span></div>
+            <div class="meta">${b.count} حركة</div>
+            <div class="acct-actions">
+              <button class="btn-ghost small" data-report="${a.id}">${ICONS.file}تقرير</button>
+              <button class="icon-btn" data-edit-acct="${a.id}">${ICONS.edit}</button>
+              <button class="icon-btn danger" data-del-acct="${a.id}">${ICONS.trash}</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+
+    <div class="panel" style="${currentTab!=='ledger'?'display:none;':''}">
+      <div class="panel-head">
+        <h2><span class="dot"></span>سجل الحركات</h2>
+        <div class="actions">
+          <button class="btn-ghost" id="exportBtn">${ICONS.download}تصدير CSV</button>
+          <button class="btn-primary" id="addCollectionBtn">${ICONS.up}تحصيل</button>
+          <button class="btn-primary" id="addExpenseEntryBtn" style="background:var(--debit);color:#2a0a0a;">${ICONS.down}صرف</button>
+          <button class="btn-primary" id="addTransferBtn" style="background:var(--transfer);color:#0a1a2a;">${ICONS.transfer}تحويل</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="field search-field"><label>بحث في البيان</label>${ICONS.search}<input type="text" id="searchInput" placeholder="ابحث..." value="${searchQuery}"></div>
+        <div class="field"><label>نوع الحركة</label>
+          <select id="filterKindSel">
+            <option value="">كل الأنواع</option>
+            <option value="collection" ${filterKind==='collection'?'selected':''}>تحصيل</option>
+            <option value="expense" ${filterKind==='expense'?'selected':''}>صرف</option>
+            <option value="transfer" ${filterKind==='transfer'?'selected':''}>تحويل</option>
+          </select>
+        </div>
+        <div class="field"><label>الحساب</label>
+          <select id="filterAcctSel">
+            <option value="">كل الحسابات</option>
+            ${accounts.map(a=>`<option value="${a.id}" ${filterAccount==String(a.id)?'selected':''}>${a.name}</option>`).join('')}
+          </select>
+        </div>
+        ${hasFilters ? `<button class="clear-link" id="clearFilters">مسح التصفية</button>` : ''}
+      </div>
+
+      ${entries.length>0 ? `<div class="result-count">عرض ${rows.length} من ${entries.length} حركة</div>` : ''}
+
+      ${rows.length===0 ? `
+        <div class="empty-state">${ICONS.list}<div class="big">${entries.length===0?'لا توجد حركات بعد':'لا توجد نتائج مطابقة'}</div><div class="small">${entries.length===0?'ابدأ بإضافة تحصيل أو صرف أو تحويل':'جرّب تعديل البحث أو التصفية'}</div></div>
+      ` : `
+      <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th>
+          <th data-sort="kind">النوع ${sortArrow('kind')}</th>
+          <th data-sort="date">التاريخ ${sortArrow('date')}</th>
+          <th>الحساب</th>
+          <th>البيان</th>
+          <th data-sort="amount">المبلغ ${sortArrow('amount')}</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(e=>{
+            const lbl = entryLabel(e);
+            let acctCell;
+            if(e.kind==='transfer'){
+              const fa = getAccount(e.fromAccountId), ta = getAccount(e.toAccountId);
+              acctCell = `<div class="flow-cell">
+                <span class="entity-tag"><span class="entity-dot" style="background:${fa?fa.color:'#888'}"></span>${fa?fa.name:'—'}</span>
+                <span class="flow-arrow">←</span>
+                <span class="entity-tag"><span class="entity-dot" style="background:${ta?ta.color:'#888'}"></span>${ta?ta.name:'—'}</span>
+              </div>`;
+            } else {
+              const acc = getAccount(e.accountId);
+              acctCell = `<span class="entity-tag"><span class="entity-dot" style="background:${acc?acc.color:'#888'}"></span>${acc?acc.name:'—'}</span>`;
+            }
+            return `<tr>
+              <td data-label="#">${e.id}</td>
+              <td data-label="النوع"><span class="type-badge ${lbl.badge}">${lbl.icon}${lbl.text}</span></td>
+              <td data-label="التاريخ">${e.day} ${e.month} ${e.year}</td>
+              <td data-label="الحساب">${acctCell}</td>
+              <td data-label="البيان" class="stmt">${e.statement||''}</td>
+              <td data-label="المبلغ" class="num ${e.kind==='collection'?'credit-txt':e.kind==='expense'?'debit-txt':'transfer-txt'}" style="font-weight:700;">${fmt(e.amount)}</td>
+              <td data-label="">
+                <div class="row-btns">
+                  <button class="icon-btn" data-edit="${e.id}">${ICONS.edit}</button>
+                  <button class="icon-btn danger" data-del="${e.id}">${ICONS.trash}</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+      `}
+    </div>
+
+    <div class="panel" style="${currentTab!=='log'?'display:none;':''}">
+      <div class="panel-head">
+        <h2><span class="dot"></span>سجل العمليات</h2>
+        ${activityLog.length>0 ? `<button class="clear-link" id="clearLogBtn">مسح السجل</button>` : ''}
+      </div>
+      ${activityLog.length===0 ? `
+        <div class="empty-state" style="padding:24px;">${ICONS.activity}<div class="big">لا توجد عمليات مسجلة بعد</div><div class="small">كل إضافة أو تعديل أو حذف هيتسجل هنا تلقائيًا</div></div>
+      ` : `
+      <div class="table-scroll" style="max-height:280px;">
+        <table>
+          <tbody>
+            ${(logExpanded ? activityLog : activityLog.slice(0,12)).map(l=>{
+              const c = l.action==='add' ? 'credit-txt' : l.action==='delete' ? 'debit-txt' : 'transfer-txt';
+              const icon = l.action==='add' ? ICONS.plus : l.action==='delete' ? ICONS.trash : ICONS.edit;
+              const d = new Date(l.ts);
+              const timeStr = d.toLocaleDateString('ar-SA') + ' — ' + d.toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'});
+              return `<tr>
+                <td style="width:26px;"><span class="type-badge" style="background:transparent;padding:0;">${icon}</span></td>
+                <td class="stmt" style="max-width:none;"><span class="${c}" style="font-weight:600;">${l.details}</span></td>
+                <td class="num" style="color:var(--muted2);font-size:11px;">${timeStr}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${activityLog.length>12 ? `<div style="text-align:center;margin-top:10px;"><button class="clear-link" id="toggleLogBtn">${logExpanded?'عرض أقل':'عرض الكل ('+activityLog.length+')'}</button></div>` : ''}
+      `}
+    </div>
+
+    <div class="panel" style="${currentTab!=='settings'?'display:none;':''}">
+      <h2 style="margin-bottom:6px;"><span class="dot"></span>الإعدادات العامة</h2>
+
+      <div class="settings-row">
+        <div><div class="lbl">اسم المؤسسة (يظهر في رأس التقارير المطبوعة)</div><div class="desc">مثال: مجموعة محمد حامد للمطاعم والمقاهي</div></div>
+        <div class="ctl"><input type="text" id="s_orgName" value="${(settings.orgName||'').replace(/"/g,'&quot;')}" style="min-width:260px;"><button class="btn-primary" id="saveOrgNameBtn">${ICONS.check}حفظ</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div><div class="lbl">المظهر</div><div class="desc">التبديل بين الوضع الداكن والفاتح</div></div>
+        <div class="ctl"><button class="btn-ghost" id="settingsThemeToggle">${theme==='dark'?ICONS.sun:ICONS.moon}${theme==='dark'?'التحويل للوضع الفاتح':'التحويل للوضع الداكن'}</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div><div class="lbl">نسخة احتياطية كاملة</div><div class="desc">تنزيل كل البيانات (الحسابات، الحركات، الجرود، السجل) كملف JSON</div></div>
+        <div class="ctl"><button class="btn-ghost" id="exportBackupBtn">${ICONS.download}تنزيل نسخة احتياطية</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div><div class="lbl">استيراد نسخة احتياطية</div><div class="desc">سيتم استبدال كل البيانات الحالية بالملف المستورد</div></div>
+        <div class="ctl">
+          <input type="file" accept="application/json" id="importBackupInput" style="display:none;">
+          <button class="btn-ghost" id="importBackupBtn">${ICONS.upload}استيراد من ملف</button>
+        </div>
+      </div>
+    </div>
+
+    ${renderEntryModal()}
+    ${renderAcctModal()}
+    ${renderReportModal()}
+    ${renderCountModal()}
+    ${renderConfirmEntryDelete()}
+    ${renderConfirmAcctDelete()}
+    ${renderConfirmCountDelete()}
+  `;
+
+  wireEvents();
+  if(chronological.length) drawChart(chronological);
+}
+
+function renderEntryModal(){
+  if(!entryModalOpen) return '';
+  const editing = editingEntryId ? entries.find(e=>e.id===editingEntryId) : null;
+  const acctOptions = (list)=> list.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  return `
+  <div class="modal-overlay" id="entryOverlay">
+    <div class="modal-box">
+      <div class="modal-head"><h3>${editing?'تعديل الحركة':'إضافة حركة جديدة'}</h3><button class="modal-close" id="entryModalClose">✕</button></div>
+      <div class="type-toggle" style="margin-bottom:16px;">
+        <button type="button" class="type-btn ${entryKind==='collection'?'active-collection':''}" data-kind="collection">${ICONS.up}تحصيل</button>
+        <button type="button" class="type-btn ${entryKind==='expense'?'active-expense':''}" data-kind="expense">${ICONS.down}صرف</button>
+        <button type="button" class="type-btn ${entryKind==='transfer'?'active-transfer':''}" data-kind="transfer">${ICONS.transfer}تحويل</button>
+      </div>
+      <form id="entryForm">
+        <div class="grid" style="margin-bottom:12px;">
+          <div class="field"><label>اليوم</label><input type="number" min="1" max="31" id="f_day" value="${editing?editing.day:''}" required></div>
+          <div class="field"><label>الشهر</label><select id="f_month" required><option value="">اختر</option>${MONTHS.map(m=>`<option value="${m}" ${editing&&editing.month===m?'selected':''}>${m}</option>`).join('')}</select></div>
+          <div class="field"><label>السنة</label><input type="number" id="f_year" value="${editing?editing.year:2026}" required></div>
+        </div>
+
+        ${entryKind==='transfer' ? `
+        <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:12px;">
+          <div class="field"><label>من حساب</label><select id="f_from" required><option value="">اختر</option>${acctOptions(accounts)}</select></div>
+          <div class="field"><label>إلى حساب</label><select id="f_to" required><option value="">اختر</option>${acctOptions(accounts)}</select></div>
+        </div>` : `
+        <div class="field" style="margin-bottom:12px;">
+          <label>${entryKind==='collection'?'الخزينة المصدر':'حساب الصرف'}</label>
+          <select id="f_account" required><option value="">اختر</option>${acctOptions(entryKind==='collection'?sourceAccounts():expenseAccounts())}</select>
+        </div>`}
+
+        <div class="grid" style="grid-template-columns:2fr 1fr;margin-bottom:4px;">
+          <div class="field"><label>البيان</label><input type="text" id="f_statement" value="${editing?(editing.statement||'').replace(/"/g,'&quot;'):''}" placeholder="وصف الحركة" required></div>
+          <div class="field"><label>المبلغ (ريال)</label><input type="number" step="0.01" min="0" id="f_amount" value="${editing?editing.amount:''}" placeholder="0.00" required></div>
+        </div>
+        <div class="row-actions" style="justify-content:flex-end;">
+          <button type="submit" class="btn-primary">${editing?'حفظ التعديل':'إضافة الحركة'}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+function renderAcctModal(){
+  if(!acctModalOpen) return '';
+  const editing = editingAcctId ? getAccount(editingAcctId) : null;
+  return `
+  <div class="modal-overlay" id="acctOverlay">
+    <div class="modal-box small">
+      <div class="modal-head"><h3>${editing?'تعديل الحساب':(acctModalType==='source'?'خزينة جديدة':'حساب صرف جديد')}</h3><button class="modal-close" id="acctModalClose">✕</button></div>
+      <form id="acctForm">
+        <div class="field" style="margin-bottom:14px;">
+          <label>اسم ${acctModalType==='source'?'الخزينة':'الحساب'}</label>
+          <input type="text" id="a_name" value="${editing?editing.name.replace(/"/g,'&quot;'):''}" placeholder="مثال: صيانة عامة" required>
+        </div>
+        <div class="field" style="margin-bottom:6px;"><label>اللون</label>
+          <div class="color-swatches" id="colorSwatches">
+            ${PALETTE.map(c=>`<div class="swatch ${selectedColor===c?'selected':''}" data-color="${c}" style="background:${c}"></div>`).join('')}
+          </div>
+        </div>
+        <div class="row-actions" style="justify-content:flex-end;"><button type="submit" class="btn-primary">${editing?'حفظ':'إضافة'}</button></div>
+      </form>
+    </div>
+  </div>`;
+}
+
+function renderReportModal(){
+  if(!reportAcctId) return '';
+  const acc = getAccount(reportAcctId); if(!acc) return '';
+  const ledger = accountLedger(reportAcctId);
+  const totalIn = ledger.filter(e=>e.signed>0).reduce((s,e)=>s+e.signed,0);
+  const totalOut = ledger.filter(e=>e.signed<0).reduce((s,e)=>s+Math.abs(e.signed),0);
+  return `
+  <div class="modal-overlay" id="reportOverlay">
+    <div class="modal-box report">
+      <div class="modal-head"><h3>تقرير ${acc.type==='source'?'خزينة':'حساب صرف'}: ${acc.name}</h3><button class="modal-close" id="reportModalClose">✕</button></div>
+      <div class="report-stats">
+        <div class="report-stat"><div class="k">إجمالي الوارد</div><div class="v credit-txt">${fmt(totalIn)}</div></div>
+        <div class="report-stat"><div class="k">إجمالي الصادر</div><div class="v debit-txt">${fmt(totalOut)}</div></div>
+        <div class="report-stat"><div class="k">الرصيد الصافي</div><div class="v">${fmt(totalIn-totalOut)}</div></div>
+      </div>
+      <div class="table-scroll" style="max-height:340px;">
+        <table class="report-table">
+          <thead><tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>المبلغ</th><th>الرصيد</th></tr></thead>
+          <tbody>
+            ${ledger.length===0 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px;">لا توجد حركات</td></tr>` :
+            ledger.map(e=>`<tr>
+              <td>${e.day} ${e.month} ${e.year}</td>
+              <td>${entryLabel(e).text}${e.kind==='transfer'?(e.fromAccountId===reportAcctId?' (صادر)':' (وارد)'):''}</td>
+              <td>${e.statement||''}</td>
+              <td class="num" style="direction:ltr;">${e.signed>=0?'+':''}${fmt(e.signed)}</td>
+              <td class="num" style="direction:ltr;font-weight:700;">${fmt(e.running)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-actions"><button class="btn-ghost" id="printReportBtn">${ICONS.print}طباعة التقرير</button></div>
+    </div>
+  </div>`;
+}
+
+function renderCountModal(){
+  if(!countModalAcctId) return '';
+  const acc = getAccount(countModalAcctId); if(!acc) return '';
+  const b = accountBalance(countModalAcctId);
+  const history = accountCounts(countModalAcctId);
+  const today = new Date();
+  return `
+  <div class="modal-overlay" id="countOverlay">
+    <div class="modal-box report">
+      <div class="modal-head"><h3>${ICONS.coins} جرد نقدي: ${acc.name}</h3><button class="modal-close" id="countModalClose">✕</button></div>
+
+      <form id="countForm">
+        <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;">
+          <div class="field"><label>اليوم</label><input type="number" min="1" max="31" id="c_day" value="${today.getDate()}" required></div>
+          <div class="field"><label>الشهر</label><select id="c_month" required>${MONTHS.map((m,i)=>`<option value="${m}" ${i===today.getMonth()?'selected':''}>${m}</option>`).join('')}</select></div>
+          <div class="field"><label>السنة</label><input type="number" id="c_year" value="${today.getFullYear()}" required></div>
+        </div>
+
+        <div class="table-scroll" style="max-height:260px;margin-bottom:12px;">
+          <table class="report-table">
+            <thead><tr><th>الفئة (ر.س)</th><th>العدد</th><th>الإجمالي</th></tr></thead>
+            <tbody>
+              ${DENOMINATIONS.map(d=>`
+                <tr>
+                  <td class="num" style="font-weight:700;direction:ltr;">${d}</td>
+                  <td><input type="number" min="0" step="1" class="denom-input" data-denom="${d}" value="0" style="max-width:110px;"></td>
+                  <td class="num denom-total" data-denom-total="${d}" style="direction:ltr;">0</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="report-stats" style="grid-template-columns:repeat(3,1fr);">
+          <div class="report-stat"><div class="k">إجمالي الجرد</div><div class="v" id="countTotalDisplay" style="color:var(--gold);">0</div></div>
+          <div class="report-stat"><div class="k">الرصيد الدفتري</div><div class="v">${fmt(b.balance)}</div></div>
+          <div class="report-stat"><div class="k">الفرق</div><div class="v" id="countVarianceDisplay">0</div></div>
+        </div>
+
+        <div class="field" style="margin:12px 0;"><label>ملاحظات (اختياري)</label><input type="text" id="c_note" placeholder="أي ملاحظات على الجرد"></div>
+
+        <div class="row-actions" style="justify-content:flex-end;">
+          <button type="submit" class="btn-primary">${ICONS.plus}حفظ الجرد</button>
+        </div>
+      </form>
+
+      ${history.length>0 ? `
+      <div class="acct-section-title" style="margin-top:20px;">${ICONS.clock} جرود سابقة</div>
+      <div class="table-scroll" style="max-height:220px;">
+        <table class="report-table">
+          <thead><tr><th>التاريخ</th><th>الإجمالي</th><th>الفرق</th><th>ملاحظات</th><th></th></tr></thead>
+          <tbody>
+            ${history.map(c=>{
+              const variance = c.total - b.balance;
+              return `<tr>
+                <td>${c.day} ${c.month} ${c.year}</td>
+                <td class="num" style="direction:ltr;font-weight:700;">${fmt(c.total)}</td>
+                <td class="num ${variance===0?'':(variance>0?'credit-txt':'debit-txt')}" style="direction:ltr;">${variance>=0?'+':''}${fmt(variance)}</td>
+                <td>${c.note||'—'}</td>
+                <td><button class="icon-btn" data-print-count="${c.id}" title="طباعة">${ICONS.print}</button><button class="icon-btn danger" data-del-count="${c.id}" title="حذف">${ICONS.trash}</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderConfirmCountDelete(){
+  if(!deletePendingCountId) return '';
+  return `<div class="modal-overlay" id="delCountOverlay"><div class="modal-box small">
+    <div class="modal-head"><h3>حذف الجرد</h3><button class="modal-close" id="delCountClose">✕</button></div>
+    <p class="confirm-text">هل أنت متأكد من حذف سجل الجرد هذا؟</p>
+    <div class="modal-actions"><button class="btn-ghost" id="delCountCancel">إلغاء</button><button class="btn-danger" id="delCountConfirm">حذف نهائي</button></div>
+  </div></div>`;
+}
+
+function printCount(countRecord){
+  const acc = getAccount(countRecord.accountId); if(!acc) return;
+  const printArea = document.getElementById('print-area');
+  const b = accountBalance(countRecord.accountId);
+  const variance = countRecord.total - b.balance;
+  printArea.innerHTML = `
+    <div style="font-family:'Tajawal',sans-serif;direction:rtl;">
+      <div style="border-bottom:2px solid #CBA653;padding-bottom:10px;margin-bottom:14px;">
+        <div style="font-family:'Cairo',sans-serif;font-weight:800;font-size:14px;color:#555;">${settings.orgName||''}</div>
+        <h2 style="font-family:'Cairo',sans-serif;margin:4px 0 0;">جرد نقدي: ${acc.name}</h2>
+      </div>
+      <p style="color:#555;font-size:12px;">تاريخ الجرد: ${countRecord.day} ${countRecord.month} ${countRecord.year}</p>
+      <table class="report-table" style="width:100%;border-collapse:collapse;margin:14px 0;">
+        <thead><tr><th>الفئة (ر.س)</th><th>العدد</th><th>الإجمالي</th></tr></thead>
+        <tbody>
+          ${DENOMINATIONS.map(d=>`<tr><td>${d}</td><td>${countRecord.denomQty[d]||0}</td><td style="direction:ltr;">${fmt((Number(countRecord.denomQty[d])||0)*d)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="report-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div class="report-stat"><div class="k">إجمالي الجرد</div><div class="v">${fmt(countRecord.total)}</div></div>
+        <div class="report-stat"><div class="k">الرصيد الدفتري</div><div class="v">${fmt(b.balance)}</div></div>
+        <div class="report-stat"><div class="k">الفرق</div><div class="v">${variance>=0?'+':''}${fmt(variance)}</div></div>
+      </div>
+      ${countRecord.note ? `<p style="margin-top:12px;"><strong>ملاحظات:</strong> ${countRecord.note}</p>` : ''}
+    </div>`;
+  window.print();
+}
+
+function renderConfirmEntryDelete(){
+  if(!deletePendingEntryId) return '';
+  return `<div class="modal-overlay" id="delEntryOverlay"><div class="modal-box small">
+    <div class="modal-head"><h3>حذف الحركة</h3><button class="modal-close" id="delEntryClose">✕</button></div>
+    <p class="confirm-text">هل أنت متأكد من حذف هذه الحركة؟ لا يمكن التراجع.</p>
+    <div class="modal-actions"><button class="btn-ghost" id="delEntryCancel">إلغاء</button><button class="btn-danger" id="delEntryConfirm">حذف نهائي</button></div>
+  </div></div>`;
+}
+function renderConfirmAcctDelete(){
+  if(!deletePendingAcctId) return '';
+  const acc = getAccount(deletePendingAcctId);
+  return `<div class="modal-overlay" id="delAcctOverlay"><div class="modal-box small">
+    <div class="modal-head"><h3>حذف الحساب</h3><button class="modal-close" id="delAcctClose">✕</button></div>
+    <p class="confirm-text">حذف "${acc?acc.name:''}" سيحذف أيضًا كل الحركات المرتبطة به. هل تريد المتابعة؟</p>
+    <div class="modal-actions"><button class="btn-ghost" id="delAcctCancel">إلغاء</button><button class="btn-danger" id="delAcctConfirm">حذف نهائي</button></div>
+  </div></div>`;
+}
+
+let chartInstance = null;
+function drawChart(chronological){
+  const canvas = document.getElementById('balanceChart'); if(!canvas) return;
+  let data = chronological;
+  if(chartRange==='last10') data = data.slice(-10);
+  const labels = data.map(e=>`${e.day} ${e.month.slice(0,3)}`);
+  const values = data.map(e=>e.balance);
+  const isLight = theme==='light';
+  if(chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(canvas.getContext('2d'), {
+    type:'line',
+    data:{labels, datasets:[{
+      data:values, borderColor:'#CBA653', borderWidth:2.5, pointRadius:3,
+      pointBackgroundColor: isLight?'#fff':'#0D1826', pointBorderColor:'#CBA653', pointBorderWidth:2, tension:.3, fill:true,
+      backgroundColor:(ctx)=>{ const g=ctx.chart.ctx.createLinearGradient(0,0,0,220); g.addColorStop(0,'rgba(203,166,83,.22)'); g.addColorStop(1,'rgba(203,166,83,0)'); return g; }
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{rtl:true, backgroundColor: isLight?'#fff':'#17263C', borderColor:'#26374F', borderWidth:1, titleColor: isLight?'#241F14':'#EDE8DC', bodyColor:'#CBA653', bodyFont:{family:'JetBrains Mono'}, callbacks:{label:(c)=>' الرصيد: '+c.parsed.y.toLocaleString('en-US')}}},
+      scales:{
+        x:{grid:{color: isLight?'rgba(0,0,0,.05)':'rgba(255,255,255,.04)'}, ticks:{color:'#8B97AC', font:{size:10.5}}},
+        y:{grid:{color: isLight?'rgba(0,0,0,.05)':'rgba(255,255,255,.04)'}, ticks:{color:'#8B97AC', font:{size:10.5, family:'JetBrains Mono'}}}
+      }
+    }
+  });
+}
+
+function wireEvents(){
+  const themeToggle = document.getElementById('themeToggle');
+  if(themeToggle) themeToggle.onclick = toggleTheme;
+
+  document.querySelectorAll('.nav-tab').forEach(b=> b.onclick = ()=>{ currentTab = b.dataset.tab; render(); });
+
+  const chartLast10 = document.getElementById('chartLast10'); if(chartLast10) chartLast10.onclick=()=>{chartRange='last10';render();};
+  const chartAll = document.getElementById('chartAll'); if(chartAll) chartAll.onclick=()=>{chartRange='all';render();};
+
+  const addSourceBtn = document.getElementById('addSourceBtn'); if(addSourceBtn) addSourceBtn.onclick=()=>openAddAccount('source');
+  const addExpenseBtn = document.getElementById('addExpenseBtn'); if(addExpenseBtn) addExpenseBtn.onclick=()=>openAddAccount('expense');
+
+  document.querySelectorAll('[data-report]').forEach(b=> b.onclick=()=>openReport(Number(b.dataset.report)));
+  document.querySelectorAll('[data-count]').forEach(b=> b.onclick=()=>openCountModal(Number(b.dataset.count)));
+  document.querySelectorAll('[data-edit-acct]').forEach(b=> b.onclick=()=>openEditAccount(Number(b.dataset.editAcct)));
+  document.querySelectorAll('[data-del-acct]').forEach(b=> b.onclick=()=>{deletePendingAcctId=Number(b.dataset.delAcct);render();});
+
+  const clearLogBtn = document.getElementById('clearLogBtn');
+  if(clearLogBtn) clearLogBtn.onclick = ()=>{ if(confirm('مسح سجل العمليات بالكامل؟')){ activityLog=[]; saveLog(); render(); } };
+  const toggleLogBtn = document.getElementById('toggleLogBtn');
+  if(toggleLogBtn) toggleLogBtn.onclick = ()=>{ logExpanded = !logExpanded; render(); };
+
+  const exportBtn = document.getElementById('exportBtn'); if(exportBtn) exportBtn.onclick=exportCSV;
+  const addCollectionBtn = document.getElementById('addCollectionBtn'); if(addCollectionBtn) addCollectionBtn.onclick=()=>openAddEntry('collection');
+  const addExpenseEntryBtn = document.getElementById('addExpenseEntryBtn'); if(addExpenseEntryBtn) addExpenseEntryBtn.onclick=()=>openAddEntry('expense');
+  const addTransferBtn = document.getElementById('addTransferBtn'); if(addTransferBtn) addTransferBtn.onclick=()=>openAddEntry('transfer');
+
+  document.querySelectorAll('th[data-sort]').forEach(th=>{
+    th.onclick=()=>{ const key=th.dataset.sort; if(sortKey===key) sortDir=sortDir==='asc'?'desc':'asc'; else {sortKey=key;sortDir='desc';} render(); };
+  });
+  document.querySelectorAll('[data-edit]').forEach(b=> b.onclick=()=>openEditEntry(Number(b.dataset.edit)));
+  document.querySelectorAll('[data-del]').forEach(b=> b.onclick=()=>{deletePendingEntryId=Number(b.dataset.del);render();});
+
+  const searchInput = document.getElementById('searchInput');
+  if(searchInput) searchInput.oninput=(e)=>{ searchQuery=e.target.value; const pos=e.target.selectionStart; render(); const el=document.getElementById('searchInput'); if(el){el.focus(); el.setSelectionRange(pos,pos);} };
+  const fk = document.getElementById('filterKindSel'); if(fk) fk.onchange=(e)=>{filterKind=e.target.value;render();};
+  const fa = document.getElementById('filterAcctSel'); if(fa) fa.onchange=(e)=>{filterAccount=e.target.value;render();};
+  const cf = document.getElementById('clearFilters'); if(cf) cf.onclick=()=>{filterKind='';filterAccount='';searchQuery='';render();};
+
+  const entryOverlay = document.getElementById('entryOverlay');
+  if(entryOverlay){
+    entryOverlay.addEventListener('mousedown',(e)=>{if(e.target===entryOverlay) closeEntryModal();});
+    document.getElementById('entryModalClose').onclick = closeEntryModal;
+    document.querySelectorAll('[data-kind]').forEach(b=> b.onclick=()=>{entryKind=b.dataset.kind;render();});
+    document.getElementById('entryForm').onsubmit=(ev)=>{
+      ev.preventDefault();
+      const data = {
+        day:document.getElementById('f_day').value, month:document.getElementById('f_month').value, year:document.getElementById('f_year').value,
+        statement:document.getElementById('f_statement').value, amount:document.getElementById('f_amount').value,
+      };
+      if(entryKind==='transfer'){ data.fromAccountId=document.getElementById('f_from').value; data.toAccountId=document.getElementById('f_to').value; }
+      else { data.accountId=document.getElementById('f_account').value; }
+      upsertEntry(data);
+    };
+  }
+
+  const acctOverlay = document.getElementById('acctOverlay');
+  if(acctOverlay){
+    acctOverlay.addEventListener('mousedown',(e)=>{if(e.target===acctOverlay) closeAcctModal();});
+    document.getElementById('acctModalClose').onclick = closeAcctModal;
+    document.querySelectorAll('#colorSwatches .swatch').forEach(sw=> sw.onclick=()=>{selectedColor=sw.dataset.color;render();});
+    document.getElementById('acctForm').onsubmit=(ev)=>{ ev.preventDefault(); upsertAccount(document.getElementById('a_name').value); };
+  }
+
+  const reportOverlay = document.getElementById('reportOverlay');
+  if(reportOverlay){
+    reportOverlay.addEventListener('mousedown',(e)=>{if(e.target===reportOverlay) closeReport();});
+    document.getElementById('reportModalClose').onclick = closeReport;
+    document.getElementById('printReportBtn').onclick = printReport;
+  }
+
+  const countOverlay = document.getElementById('countOverlay');
+  if(countOverlay){
+    countOverlay.addEventListener('mousedown',(e)=>{if(e.target===countOverlay) closeCountModal();});
+    document.getElementById('countModalClose').onclick = closeCountModal;
+
+    const recalc = ()=>{
+      let total = 0;
+      document.querySelectorAll('.denom-input').forEach(inp=>{
+        const d = Number(inp.dataset.denom);
+        const qty = Number(inp.value)||0;
+        const lineTotal = qty*d;
+        total += lineTotal;
+        const cell = document.querySelector(`[data-denom-total="${d}"]`);
+        if(cell) cell.textContent = fmt(lineTotal);
+      });
+      const disp = document.getElementById('countTotalDisplay'); if(disp) disp.textContent = fmt(total);
+      const bookBalance = accountBalance(countModalAcctId).balance;
+      const varDisp = document.getElementById('countVarianceDisplay');
+      if(varDisp){
+        const variance = total - bookBalance;
+        varDisp.textContent = (variance>=0?'+':'') + fmt(variance);
+        varDisp.className = 'v ' + (variance===0?'':(variance>0?'credit-txt':'debit-txt'));
+      }
+    };
+    document.querySelectorAll('.denom-input').forEach(inp=> inp.oninput = recalc);
+    recalc();
+
+    document.getElementById('countForm').onsubmit = (ev)=>{
+      ev.preventDefault();
+      const denomQty = {};
+      document.querySelectorAll('.denom-input').forEach(inp=>{ denomQty[inp.dataset.denom] = Number(inp.value)||0; });
+      const dateInfo = { day:document.getElementById('c_day').value, month:document.getElementById('c_month').value, year:document.getElementById('c_year').value };
+      const note = document.getElementById('c_note').value;
+      saveCount(countModalAcctId, denomQty, note, dateInfo);
+    };
+
+    document.querySelectorAll('[data-print-count]').forEach(b=> b.onclick=()=>{
+      const c = counts.find(x=>x.id===Number(b.dataset.printCount));
+      if(c) printCount(c);
+    });
+    document.querySelectorAll('[data-del-count]').forEach(b=> b.onclick=()=>{ deletePendingCountId=Number(b.dataset.delCount); render(); });
+  }
+
+  const delCountOverlay = document.getElementById('delCountOverlay');
+  if(delCountOverlay){
+    delCountOverlay.addEventListener('mousedown',(e)=>{if(e.target===delCountOverlay){deletePendingCountId=null;render();}});
+    document.getElementById('delCountClose').onclick=()=>{deletePendingCountId=null;render();};
+    document.getElementById('delCountCancel').onclick=()=>{deletePendingCountId=null;render();};
+    document.getElementById('delCountConfirm').onclick=()=>deleteCount(deletePendingCountId);
+  }
+
+  const saveOrgNameBtn = document.getElementById('saveOrgNameBtn');
+  if(saveOrgNameBtn) saveOrgNameBtn.onclick = ()=>{
+    const val = document.getElementById('s_orgName').value.trim();
+    settings.orgName = val || 'خزينة العمومية';
+    saveSettings(); showToast('تم حفظ اسم المؤسسة', 'success'); render();
+  };
+  const settingsThemeToggle = document.getElementById('settingsThemeToggle');
+  if(settingsThemeToggle) settingsThemeToggle.onclick = toggleTheme;
+  const exportBackupBtn = document.getElementById('exportBackupBtn');
+  if(exportBackupBtn) exportBackupBtn.onclick = exportBackup;
+  const importBackupBtn = document.getElementById('importBackupBtn');
+  const importBackupInput = document.getElementById('importBackupInput');
+  if(importBackupBtn && importBackupInput){
+    importBackupBtn.onclick = ()=> importBackupInput.click();
+    importBackupInput.onchange = (e)=>{ if(e.target.files[0]) importBackupFile(e.target.files[0]); };
+  }
+
+  const delEntryOverlay = document.getElementById('delEntryOverlay');
+  if(delEntryOverlay){
+    delEntryOverlay.addEventListener('mousedown',(e)=>{if(e.target===delEntryOverlay){deletePendingEntryId=null;render();}});
+    document.getElementById('delEntryClose').onclick=()=>{deletePendingEntryId=null;render();};
+    document.getElementById('delEntryCancel').onclick=()=>{deletePendingEntryId=null;render();};
+    document.getElementById('delEntryConfirm').onclick=()=>deleteEntry(deletePendingEntryId);
+  }
+  const delAcctOverlay = document.getElementById('delAcctOverlay');
+  if(delAcctOverlay){
+    delAcctOverlay.addEventListener('mousedown',(e)=>{if(e.target===delAcctOverlay){deletePendingAcctId=null;render();}});
+    document.getElementById('delAcctClose').onclick=()=>{deletePendingAcctId=null;render();};
+    document.getElementById('delAcctCancel').onclick=()=>{deletePendingAcctId=null;render();};
+    document.getElementById('delAcctConfirm').onclick=()=>deleteAccount(deletePendingAcctId);
+  }
+}
+
+loadAll();
+</script>
+</body>
+</html>
